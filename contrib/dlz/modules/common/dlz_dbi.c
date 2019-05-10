@@ -425,6 +425,10 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 		goto cleanup;
 	}
 
+	if (log != NULL)
+			log(ISC_LOG_ERROR,
+			    "build_dbinstance finished");
+
 	/* pass back the db instance */
 	*dbi = (dbinstance_t *) db;
 
