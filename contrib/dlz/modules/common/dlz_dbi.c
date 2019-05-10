@@ -426,7 +426,7 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 	}
 
 	if (log != NULL)
-			log(ISC_LOG_ERROR,
+			log(ISC_LOG_CRITICAL,
 			    "build_dbinstance finished");
 
 	/* pass back the db instance */
