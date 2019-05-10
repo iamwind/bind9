@@ -320,6 +320,10 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 	dbinstance_t *db = NULL;
 	int err;
 
+	if (log != NULL)
+			log(ISC_LOG_CRITICAL,
+			    "build_dbinstance began");
+	
 	/* allocate and zero memory for driver structure */
 	db = calloc(1, sizeof(dbinstance_t));
 	if (db == NULL) {
