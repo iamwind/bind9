@@ -233,7 +233,9 @@ mysql_get_resultset(const char *zone, const char *record,
 	unsigned int i = 0;
 	unsigned int j = 0;
 	int qres = 0;
-
+	db->log(ISC_LOG_DEBUG(2),
+				"mysql_get_resultset began. zone=%s	record=%s	client=%s",
+				zone, record, client);
 #if PTHREADS
 	/* find an available DBI from the list */
 	dbi = mysql_find_avail_conn(db);
