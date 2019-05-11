@@ -337,7 +337,7 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 	int err;
 
 	if (log != NULL)
-			log(ISC_LOG_CRITICAL,
+			log(ISC_LOG_DEBUG(1),
 			    "build_dbinstance began");
 	
 	/* allocate and zero memory for driver structure */
@@ -433,6 +433,9 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 		goto cleanup;
 	}
 
+	if (log != NULL)
+			log(ISC_LOG_DEBUG(1),
+			    "build_dbinstance call build_querylist lookup_q");
 	/* build lookup query, query list */
 	result = build_querylist(lookup_str, &db->zone, &db->record,
 				 &db->client, &db->lookup_q,
