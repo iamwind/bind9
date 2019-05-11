@@ -202,6 +202,10 @@ build_querylist(const char *query_str, char **zone, char **record,
 			/* tseg->cmd points in-directly poinsts to a string */
 			tseg->direct = false;
 			foundclient = true;
+			
+			log(ISC_LOG_DEBUG(1),
+				"build_querylist query=%s client=%s",
+				query_str, tseg->cmd);
 		}
 	}
 
@@ -244,7 +248,7 @@ build_querylist(const char *query_str, char **zone, char **record,
 
 	/* pass back the query list */
 	*querylist = (query_list_t *) tql;
-
+	
 	/* return success */
 	return (ISC_R_SUCCESS);
 
