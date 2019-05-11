@@ -353,22 +353,22 @@ mysql_get_resultset(const char *zone, const char *record,
 	 */
 	switch(query) {
 	case ALLNODES:
-		querystring = build_querystring(dbi->allnodes_q);
+		querystring = build_querystring(dbi->allnodes_q, db->log);
 		break;
 	case ALLOWXFR:
-		querystring = build_querystring(dbi->allowxfr_q);
+		querystring = build_querystring(dbi->allowxfr_q, db->log);
 		break;
 	case AUTHORITY:
-		querystring = build_querystring(dbi->authority_q);
+		querystring = build_querystring(dbi->authority_q, db->log);
 		break;
 	case FINDZONE:
-		querystring = build_querystring(dbi->findzone_q);
+		querystring = build_querystring(dbi->findzone_q, db->log);
 		break;
 	case COUNTZONE:
-		querystring = build_querystring(dbi->countzone_q);
+		querystring = build_querystring(dbi->countzone_q, db->log);
 		break;
 	case LOOKUP:
-		querystring = build_querystring(dbi->lookup_q);
+		querystring = build_querystring(dbi->lookup_q, db->log);
 		break;
 	default:
 		db->log(ISC_LOG_ERROR,

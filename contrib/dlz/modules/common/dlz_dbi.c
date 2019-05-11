@@ -271,7 +271,7 @@ build_querylist(const char *query_str, char **zone, char **record,
  * used to be in our queries from named.conf
  */
 char *
-build_querystring(query_list_t *querylist) {
+build_querystring(query_list_t *querylist, log_t log) {
 	query_segment_t *tseg = NULL;
 	unsigned int length = 0;
 	char *qs = NULL;
@@ -285,10 +285,12 @@ build_querystring(query_list_t *querylist) {
 		 */
 		if (tseg->direct == true)
 			length += tseg->strlen;
-		else	/* calculate string length for dynamic segments. */
-			printf("build_querystring tseg->direct=%d tseg->cmd=%s", 
-				tseg->direct, *(char **)tseg->cmd);
+		else {	/* calculate string length for dynamic segments. */
+			if (log != NULL)
+				log(ISC_LOG_ERROR,"build_querystring tseg->direct=%d tseg->cmd=%s", 
+					tseg->direct, *(char **)tseg->cmd);
 			length += strlen(* (char**) tseg->cmd);
+		}
 		/* get the next segment */
 		tseg = DLZ_LIST_NEXT(tseg, link);
 	}
