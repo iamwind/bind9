@@ -435,8 +435,8 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 
 	if (log != NULL)
 			log(ISC_LOG_CRITICAL,
-			    "build_dbinstance call build_querylist lookup_q lookup_str=%s client=%s",
-				lookup_str, db->client);
+			    "build_dbinstance call build_querylist lookup_q lookup_str=%s zone=%s record=%s client=%s",
+				lookup_str, db->zone, db->record, db->client);
 	/* build lookup query, query list */
 	result = build_querylist(lookup_str, &db->zone, &db->record,
 				 &db->client, &db->lookup_q,
