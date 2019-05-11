@@ -176,6 +176,10 @@ build_querylist(const char *query_str, char **zone, char **record,
 			/* tseg->cmd points in-directly to a string */
 			tseg->direct = false;
 			foundzone = true;
+
+			log(ISC_LOG_DEBUG(1),
+				"build_querylist query=%s zone=%s",
+				query_str, tseg->cmd);
 			/* check if we encountered "$record$" token */
 		} else if (strcasecmp(tseg->cmd, "record") == 0) {
 			/*
@@ -189,6 +193,10 @@ build_querylist(const char *query_str, char **zone, char **record,
 			/* tseg->cmd points in-directly poinsts to a string */
 			tseg->direct = false;
 			foundrecord = true;
+
+			log(ISC_LOG_DEBUG(1),
+				"build_querylist query=%s record=%s",
+				query_str, tseg->cmd);
 			/* check if we encountered "$client$" token */
 		} else if (strcasecmp(tseg->cmd, "client") == 0) {
 			/*
