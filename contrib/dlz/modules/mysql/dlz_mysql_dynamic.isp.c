@@ -288,6 +288,9 @@ mysql_get_resultset(const char *zone, const char *record,
 		}
 		break;
 	case LOOKUP:
+		db->log(ISC_LOG_DEBUG(2),
+				"mysql_get_resultset query=LOOKUP. zone=%s	record=%s	client=%s",
+				zone, record, client);
 		if (dbi->lookup_q == NULL) {
 			db->log(ISC_LOG_DEBUG(2),
 				"No query specified for lookup.  "
