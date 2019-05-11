@@ -287,8 +287,10 @@ build_querystring(query_list_t *querylist) {
 			length += tseg->strlen;
 		else	/* calculate string length for dynamic segments. */
 			log(ISC_LOG_DEBUG(1),
-				"build_querystring tseg->direct=%d tseg->cmd=%s",
-				tseg->direct, (char **)tseg->cmd);
+				"build_querystring tseg->direct=");
+			log(ISC_LOG_DEBUG(1), tseg->direct);
+			log(ISC_LOG_DEBUG(1), "tseg->cmd=%s");
+			log(ISC_LOG_DEBUG(1), *(char **)tseg->cmd);
 			length += strlen(* (char**) tseg->cmd);
 		/* get the next segment */
 		tseg = DLZ_LIST_NEXT(tseg, link);
