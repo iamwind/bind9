@@ -764,6 +764,89 @@ dlz_authority(const char *zone, void *dbdata, dns_sdlzlookup_t *lookup) {
 	return (mysql_process_rs(db, lookup, rs));
 }
 
+typedef struct isc_netaddr {
+	unsigned int family;
+	union {
+		struct in_addr in;
+		struct in6_addr in6;
+#ifdef ISC_PLATFORM_HAVESYSUNH
+		char un[sizeof(((struct sockaddr_un *)0)->sun_path)];
+#endif
+	} type;
+	uint32_t zone;
+} isc_netaddr_t;
+
+void
+isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s) {
+	int family = s->type.sa.sa_family;
+	t->family = family;
+	switch (family) {
+	case AF_INET:
+		t->type.in = s->type.sin.sin_addr;
+		t->zone = 0;
+		break;
+	case AF_INET6:
+		memmove(&t->type.in6, &s->type.sin6.sin6_addr, 16);
+		t->zone = s->type.sin6.sin6_scope_id;
+		break;
+#ifdef ISC_PLATFORM_HAVESYSUNH
+	case AF_UNIX:
+		memmove(t->type.un, s->type.sunix.sun_path, sizeof(t->type.un));
+		t->zone = 0;
+		break;
+#endif
+	default:
+		//INSIST(0);
+		//ISC_UNREACHABLE();
+		break;
+	}
+}
+
+isc_result_t clientstr_from_netaddr(isc_netaddr_t *netaddr, char *clientstr)
+{
+	const char *r;
+	const void *type;
+
+	//REQUIRE(netaddr != NULL);
+
+	switch (netaddr->family) {
+	case AF_INET:
+		type = &netaddr->type.in;
+		break;
+	case AF_INET6:
+		type = &netaddr->type.in6;
+		break;
+#ifdef ISC_PLATFORM_HAVESYSUNH
+	case AF_UNIX:
+		alen = strlen(netaddr->type.un);
+		if (alen > isc_buffer_availablelength(target))
+			return (ISC_R_NOSPACE);
+		isc_buffer_putmem(target,
+				  (const unsigned char *)(netaddr->type.un),
+				  alen);
+		return (ISC_R_SUCCESS);
+#endif
+	default:
+		return (ISC_R_FAILURE);
+	}
+	r = inet_ntop(netaddr->family, type, clientstr, sizeof "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255");
+	if (r == NULL)
+		return (ISC_R_FAILURE);
+	return (ISC_R_SUCCESS);
+}
+
+/*% Converts the input string to lowercase, in place. */
+void
+dns_sdlz_tolower(char *str) {
+	unsigned int len = strlen(str);
+	unsigned int i;
+
+	for (i = 0; i < len; i++) {
+		if (str[i] >= 'A' && str[i] <= 'Z')
+			str[i] += 32;
+	}
+}
+
 /*% If zone is supported, lookup up a (or multiple) record(s) in it */
 isc_result_t
 dlz_lookup(const char *zone, const char *name,
@@ -771,8 +854,6 @@ dlz_lookup(const char *zone, const char *name,
 	   dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
 {
-	isc_buffer_t b2;
-	char namestr[DNS_NAME_MAXTEXT + 1];
 	char clientstr[(sizeof "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255")
 		       + 1];
 	isc_sockaddr_t *clientaddr;
@@ -785,17 +866,15 @@ dlz_lookup(const char *zone, const char *name,
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
-	result = ns_client_sourceip(clientinfo, &clientaddr);
+        result = methods->sourceip(clientinfo, &clientaddr);
 	if (result != ISC_R_SUCCESS)
 		return (result);
 
 	/* convert client address to ascii text */
-	isc_buffer_init(&b2, clientstr, sizeof(clientstr));
 	isc_netaddr_fromsockaddr(&netaddr, clientaddr);
-	result = isc_netaddr_totext(&netaddr, &b2);
+	result = clientstr_from_netaddr(&netaddr, clientstr);
 	if (result != ISC_R_SUCCESS)
 		return (result);
-	isc_buffer_putuint8(&b2, 0);
 
 	/* make sure strings are always lowercase */
 	dns_sdlz_tolower(clientstr);
