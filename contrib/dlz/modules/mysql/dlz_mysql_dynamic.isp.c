@@ -771,6 +771,13 @@ dlz_lookup(const char *zone, const char *name,
 	   dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
 {
+	isc_buffer_t b2;
+	char namestr[DNS_NAME_MAXTEXT + 1];
+	char clientstr[(sizeof "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255")
+		       + 1];
+	isc_sockaddr_t *clientaddr;
+	isc_netaddr_t netaddr;
+
 	isc_result_t result;
 	MYSQL_RES *rs = NULL;
 	mysql_instance_t *db = (mysql_instance_t *)dbdata;
@@ -778,7 +785,22 @@ dlz_lookup(const char *zone, const char *name,
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
-	result = mysql_get_resultset(zone, name, NULL, LOOKUP, dbdata, &rs);
+	result = ns_client_sourceip(clientinfo, &clientaddr);
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
+	/* convert client address to ascii text */
+	isc_buffer_init(&b2, clientstr, sizeof(clientstr));
+	isc_netaddr_fromsockaddr(&netaddr, clientaddr);
+	result = isc_netaddr_totext(&netaddr, &b2);
+	if (result != ISC_R_SUCCESS)
+		return (result);
+	isc_buffer_putuint8(&b2, 0);
+
+	/* make sure strings are always lowercase */
+	dns_sdlz_tolower(clientstr);
+
+	result = mysql_get_resultset(zone, name, clientstr, LOOKUP, dbdata, &rs);
 
 	/* if we didn't get a result set, log an err msg. */
 	if (result != ISC_R_SUCCESS) {
