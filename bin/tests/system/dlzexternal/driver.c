@@ -382,7 +382,7 @@ dlz_findzonedb(void *dbdata, const char *name,
  * to process; this should result in a SERVFAIL when queried.
  */
 isc_result_t
-dlz_lookup(const char *zone, const char *name, void *dbdata,
+dlz_lookup(const char *zone, const char *name, const char *client, void *dbdata,
 	   dns_sdlzlookup_t *lookup, dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
 {
