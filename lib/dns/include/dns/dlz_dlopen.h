@@ -64,6 +64,7 @@ typedef isc_result_t dlz_dlopen_findzonedb_t(void *dbdata,
  */
 typedef isc_result_t dlz_dlopen_lookup_t(const char *zone,
 					 const char *name,
+					 const char *client,
 					 void *dbdata,
 					 dns_sdlzlookup_t *lookup,
 					 dns_clientinfomethods_t *methods,
