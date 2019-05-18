@@ -287,6 +287,9 @@ build_querystring(query_list_t *querylist, log_t log) {
 	/* start at the top of the list */
 	tseg = DLZ_LIST_HEAD(*querylist);
 	while (tseg != NULL) {
+		if (log != NULL)
+			log(ISC_LOG_ERROR,"build_querystring tseg->direct=%d tseg->cmd=%s", 
+			tseg->direct, *(char **)tseg->cmd);
 		/*
 		 * if this is a query segment, use the
 		 * precalculated string length

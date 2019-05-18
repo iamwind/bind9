@@ -766,7 +766,7 @@ dlz_authority(const char *zone, void *dbdata, dns_sdlzlookup_t *lookup) {
 
 /*% If zone is supported, lookup up a (or multiple) record(s) in it */
 isc_result_t
-dlz_lookup(const char *zone, const char *name,
+dlz_lookup(const char *zone, const char *name, const char *client,
 	   void *dbdata, dns_sdlzlookup_t *lookup,
 	   dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
@@ -778,7 +778,7 @@ dlz_lookup(const char *zone, const char *name,
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
-	result = mysql_get_resultset(zone, name, NULL, LOOKUP, dbdata, &rs);
+	result = mysql_get_resultset(zone, name, client, LOOKUP, dbdata, &rs);
 
 	/* if we didn't get a result set, log an err msg. */
 	if (result != ISC_R_SUCCESS) {

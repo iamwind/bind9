@@ -173,7 +173,7 @@ dlopen_dlz_findzonedb(void *driverarg, void *dbdata, const char *name,
 
 
 static isc_result_t
-dlopen_dlz_lookup(const char *zone, const char *name, void *driverarg,
+dlopen_dlz_lookup(const char *zone, const char *name, const char *client, void *driverarg,
 		  void *dbdata, dns_sdlzlookup_t *lookup,
 		  dns_clientinfomethods_t *methods,
 		  dns_clientinfo_t *clientinfo)
@@ -184,7 +184,7 @@ dlopen_dlz_lookup(const char *zone, const char *name, void *driverarg,
 	UNUSED(driverarg);
 
 	MAYBE_LOCK(cd);
-	result = cd->dlz_lookup(zone, name, cd->dbdata, lookup,
+	result = cd->dlz_lookup(zone, name, client, cd->dbdata, lookup,
 				methods, clientinfo);
 	MAYBE_UNLOCK(cd);
 	return (result);
