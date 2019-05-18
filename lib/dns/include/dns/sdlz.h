@@ -179,7 +179,7 @@ typedef isc_result_t
  */
 
 typedef isc_result_t
-(*dns_sdlzlookupfunc_t)(const char *zone, const char *name, void *driverarg,
+(*dns_sdlzlookupfunc_t)(const char *zone, const char *name, const char *client, void *driverarg,
 			void *dbdata, dns_sdlzlookup_t *lookup,
 			dns_clientinfomethods_t *methods,
 			dns_clientinfo_t *clientinfo);
