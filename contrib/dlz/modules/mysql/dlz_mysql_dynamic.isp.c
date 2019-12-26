@@ -35,7 +35,7 @@
 
 /*
  * Copyright (C) 1999-2001, 2013, 2016  Internet Systems Consortium, Inc. ("ISC")
- *
+ * 
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -49,6 +49,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include <dlz_minimal.h>
@@ -233,9 +234,7 @@ mysql_get_resultset(const char *zone, const char *record,
 	unsigned int i = 0;
 	unsigned int j = 0;
 	int qres = 0;
-	db->log(ISC_LOG_DEBUG(1),
-				"mysql_get_resultset began. zone=%s	record=%s	client=%s",
-				zone, record, client);
+
 #if PTHREADS
 	/* find an available DBI from the list */
 	dbi = mysql_find_avail_conn(db);
@@ -288,9 +287,6 @@ mysql_get_resultset(const char *zone, const char *record,
 		}
 		break;
 	case LOOKUP:
-		db->log(ISC_LOG_DEBUG(1),
-				"mysql_get_resultset query=LOOKUP. zone=%s	record=%s	client=%s",
-				zone, record, client);
 		if (dbi->lookup_q == NULL) {
 			db->log(ISC_LOG_DEBUG(2),
 				"No query specified for lookup.  "
@@ -353,22 +349,22 @@ mysql_get_resultset(const char *zone, const char *record,
 	 */
 	switch(query) {
 	case ALLNODES:
-		querystring = build_querystring(dbi->allnodes_q, db->log);
+		querystring = build_querystring(dbi->allnodes_q);
 		break;
 	case ALLOWXFR:
-		querystring = build_querystring(dbi->allowxfr_q, db->log);
+		querystring = build_querystring(dbi->allowxfr_q);
 		break;
 	case AUTHORITY:
-		querystring = build_querystring(dbi->authority_q, db->log);
+		querystring = build_querystring(dbi->authority_q);
 		break;
 	case FINDZONE:
-		querystring = build_querystring(dbi->findzone_q, db->log);
+		querystring = build_querystring(dbi->findzone_q);
 		break;
 	case COUNTZONE:
-		querystring = build_querystring(dbi->countzone_q, db->log);
+		querystring = build_querystring(dbi->countzone_q);
 		break;
 	case LOOKUP:
-		querystring = build_querystring(dbi->lookup_q, db->log);
+		querystring = build_querystring(dbi->lookup_q);
 		break;
 	default:
 		db->log(ISC_LOG_ERROR,
@@ -383,7 +379,7 @@ mysql_get_resultset(const char *zone, const char *record,
 	}
 
 	/* output the full query string when debugging */
-	db->log(ISC_LOG_DEBUG(1), "\nQuery String: %s\n", querystring);
+	db->log(ISC_LOG_ERROR, "\nQuery String: %s\n", querystring);
 
 	/* attempt query up to 3 times. */
 	for (i = 0; i < 3; i++) {
@@ -401,6 +397,7 @@ mysql_get_resultset(const char *zone, const char *record,
 			*rs = mysql_store_result((MYSQL *) dbi->dbconn);
 			if (*rs == NULL)
 				result = ISC_R_FAILURE;
+			db->log(ISC_LOG_ERROR, "\nMysql last error: %s\n", mysql_error((MYSQL *) dbi->dbconn));
 			do
   			{
 				MYSQL_RES* res = mysql_store_result((MYSQL *) dbi->dbconn);
@@ -532,6 +529,7 @@ mysql_process_rs(mysql_instance_t *db, dns_sdlzlookup_t *lookup,
 
 			result = db->putrr(lookup, safeGet(row[1]),
 					   ttl, tmpString);
+			db->log(ISC_LOG_ERROR, "type %s tmpString: %s", safeGet(row[1]), tmpString);
 			free(tmpString);
 		}
 
@@ -541,7 +539,7 @@ mysql_process_rs(mysql_instance_t *db, dns_sdlzlookup_t *lookup,
 				"putrr returned error: %d", result);
 			return (ISC_R_FAILURE);
 		}
-
+		
 		row = mysql_fetch_row(rs);
 	}
 
@@ -868,22 +866,32 @@ dlz_lookup(const char *zone, const char *name,
 	isc_result_t result;
 	MYSQL_RES *rs = NULL;
 	mysql_instance_t *db = (mysql_instance_t *)dbdata;
+	
+	db->log(ISC_LOG_ERROR, "dlz_lookup() methods:%d  clientinfo:%d", methods, clientinfo);
 
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
-        result = methods->sourceip(clientinfo, &clientaddr);
-	if (result != ISC_R_SUCCESS)
-		return (result);
+	if (methods == 0)
+		sprintf(clientstr, "127.0.0.1");
+	else {
+        	result = methods->sourceip(clientinfo, &clientaddr);
+		if (result != ISC_R_SUCCESS)
+			return (result);
+		db->log(ISC_LOG_ERROR, "sourceip: %d", clientaddr->type.sin.sin_addr);
 
-	/* convert client address to ascii text */
-	isc_netaddr_fromsockaddr(&netaddr, clientaddr);
-	result = clientstr_from_netaddr(&netaddr, clientstr);
-	if (result != ISC_R_SUCCESS)
-		return (result);
-
-	/* make sure strings are always lowercase */
-	dns_sdlz_tolower(clientstr);
+		/* convert client address to ascii text */
+		isc_netaddr_fromsockaddr(&netaddr, clientaddr);
+		db->log(ISC_LOG_ERROR, "sourceip: %d", netaddr.type.in);
+		result = clientstr_from_netaddr(&netaddr, clientstr);
+		if (result != ISC_R_SUCCESS)
+			return (result);
+	
+		db->log(ISC_LOG_ERROR, "clientstr: %s", clientstr);
+		/* make sure strings are always lowercase */
+		dns_sdlz_tolower(clientstr);
+		db->log(ISC_LOG_ERROR, "clientstr: %s", clientstr);
+	}
 
 	result = mysql_get_resultset(zone, name, clientstr, LOOKUP, dbdata, &rs);
 
