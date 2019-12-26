@@ -103,7 +103,7 @@ build_querylist(const char *query_str, char **zone, char **record,
 		log_t log);
 
 char *
-build_querystring(query_list_t *querylist);
+build_querystring(query_list_t *querylist, log_t log);
 
 isc_result_t
 build_dbinstance(const char *allnodes_str, const char *allowxfr_str,

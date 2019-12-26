@@ -233,7 +233,9 @@ mysql_get_resultset(const char *zone, const char *record,
 	unsigned int i = 0;
 	unsigned int j = 0;
 	int qres = 0;
-
+	db->log(ISC_LOG_DEBUG(1),
+				"mysql_get_resultset began. zone=%s	record=%s	client=%s",
+				zone, record, client);
 #if PTHREADS
 	/* find an available DBI from the list */
 	dbi = mysql_find_avail_conn(db);
@@ -286,6 +288,9 @@ mysql_get_resultset(const char *zone, const char *record,
 		}
 		break;
 	case LOOKUP:
+		db->log(ISC_LOG_DEBUG(1),
+				"mysql_get_resultset query=LOOKUP. zone=%s	record=%s	client=%s",
+				zone, record, client);
 		if (dbi->lookup_q == NULL) {
 			db->log(ISC_LOG_DEBUG(2),
 				"No query specified for lookup.  "
@@ -348,22 +353,22 @@ mysql_get_resultset(const char *zone, const char *record,
 	 */
 	switch(query) {
 	case ALLNODES:
-		querystring = build_querystring(dbi->allnodes_q);
+		querystring = build_querystring(dbi->allnodes_q, db->log);
 		break;
 	case ALLOWXFR:
-		querystring = build_querystring(dbi->allowxfr_q);
+		querystring = build_querystring(dbi->allowxfr_q, db->log);
 		break;
 	case AUTHORITY:
-		querystring = build_querystring(dbi->authority_q);
+		querystring = build_querystring(dbi->authority_q, db->log);
 		break;
 	case FINDZONE:
-		querystring = build_querystring(dbi->findzone_q);
+		querystring = build_querystring(dbi->findzone_q, db->log);
 		break;
 	case COUNTZONE:
-		querystring = build_querystring(dbi->countzone_q);
+		querystring = build_querystring(dbi->countzone_q, db->log);
 		break;
 	case LOOKUP:
-		querystring = build_querystring(dbi->lookup_q);
+		querystring = build_querystring(dbi->lookup_q, db->log);
 		break;
 	default:
 		db->log(ISC_LOG_ERROR,
@@ -396,6 +401,12 @@ mysql_get_resultset(const char *zone, const char *record,
 			*rs = mysql_store_result((MYSQL *) dbi->dbconn);
 			if (*rs == NULL)
 				result = ISC_R_FAILURE;
+			do
+  			{
+				MYSQL_RES* res = mysql_store_result((MYSQL *) dbi->dbconn);
+				mysql_free_result(res);
+			}
+			while ( (0 == mysql_next_result((MYSQL *) dbi->dbconn)) );
 		}
 	} else
 		result = ISC_R_FAILURE;
@@ -759,6 +770,89 @@ dlz_authority(const char *zone, void *dbdata, dns_sdlzlookup_t *lookup) {
 	return (mysql_process_rs(db, lookup, rs));
 }
 
+typedef struct isc_netaddr {
+	unsigned int family;
+	union {
+		struct in_addr in;
+		struct in6_addr in6;
+#ifdef ISC_PLATFORM_HAVESYSUNH
+		char un[sizeof(((struct sockaddr_un *)0)->sun_path)];
+#endif
+	} type;
+	uint32_t zone;
+} isc_netaddr_t;
+
+void
+isc_netaddr_fromsockaddr(isc_netaddr_t *t, const isc_sockaddr_t *s) {
+	int family = s->type.sa.sa_family;
+	t->family = family;
+	switch (family) {
+	case AF_INET:
+		t->type.in = s->type.sin.sin_addr;
+		t->zone = 0;
+		break;
+	case AF_INET6:
+		memmove(&t->type.in6, &s->type.sin6.sin6_addr, 16);
+		t->zone = s->type.sin6.sin6_scope_id;
+		break;
+#ifdef ISC_PLATFORM_HAVESYSUNH
+	case AF_UNIX:
+		memmove(t->type.un, s->type.sunix.sun_path, sizeof(t->type.un));
+		t->zone = 0;
+		break;
+#endif
+	default:
+		//INSIST(0);
+		//ISC_UNREACHABLE();
+		break;
+	}
+}
+
+isc_result_t clientstr_from_netaddr(isc_netaddr_t *netaddr, char *clientstr)
+{
+	const char *r;
+	const void *type;
+
+	//REQUIRE(netaddr != NULL);
+
+	switch (netaddr->family) {
+	case AF_INET:
+		type = &netaddr->type.in;
+		break;
+	case AF_INET6:
+		type = &netaddr->type.in6;
+		break;
+#ifdef ISC_PLATFORM_HAVESYSUNH
+	case AF_UNIX:
+		alen = strlen(netaddr->type.un);
+		if (alen > isc_buffer_availablelength(target))
+			return (ISC_R_NOSPACE);
+		isc_buffer_putmem(target,
+				  (const unsigned char *)(netaddr->type.un),
+				  alen);
+		return (ISC_R_SUCCESS);
+#endif
+	default:
+		return (ISC_R_FAILURE);
+	}
+	r = inet_ntop(netaddr->family, type, clientstr, sizeof "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255");
+	if (r == NULL)
+		return (ISC_R_FAILURE);
+	return (ISC_R_SUCCESS);
+}
+
+/*% Converts the input string to lowercase, in place. */
+void
+dns_sdlz_tolower(char *str) {
+	unsigned int len = strlen(str);
+	unsigned int i;
+
+	for (i = 0; i < len; i++) {
+		if (str[i] >= 'A' && str[i] <= 'Z')
+			str[i] += 32;
+	}
+}
+
 /*% If zone is supported, lookup up a (or multiple) record(s) in it */
 isc_result_t
 dlz_lookup(const char *zone, const char *name,
@@ -766,6 +860,11 @@ dlz_lookup(const char *zone, const char *name,
 	   dns_clientinfomethods_t *methods,
 	   dns_clientinfo_t *clientinfo)
 {
+	char clientstr[(sizeof "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255")
+		       + 1];
+	isc_sockaddr_t *clientaddr;
+	isc_netaddr_t netaddr;
+
 	isc_result_t result;
 	MYSQL_RES *rs = NULL;
 	mysql_instance_t *db = (mysql_instance_t *)dbdata;
@@ -773,7 +872,20 @@ dlz_lookup(const char *zone, const char *name,
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
-	result = mysql_get_resultset(zone, name, NULL, LOOKUP, dbdata, &rs);
+        result = methods->sourceip(clientinfo, &clientaddr);
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
+	/* convert client address to ascii text */
+	isc_netaddr_fromsockaddr(&netaddr, clientaddr);
+	result = clientstr_from_netaddr(&netaddr, clientstr);
+	if (result != ISC_R_SUCCESS)
+		return (result);
+
+	/* make sure strings are always lowercase */
+	dns_sdlz_tolower(clientstr);
+
+	result = mysql_get_resultset(zone, name, clientstr, LOOKUP, dbdata, &rs);
 
 	/* if we didn't get a result set, log an err msg. */
 	if (result != ISC_R_SUCCESS) {

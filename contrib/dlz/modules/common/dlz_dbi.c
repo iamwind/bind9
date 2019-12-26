@@ -176,6 +176,10 @@ build_querylist(const char *query_str, char **zone, char **record,
 			/* tseg->cmd points in-directly to a string */
 			tseg->direct = false;
 			foundzone = true;
+
+			log(ISC_LOG_DEBUG(1),
+				"build_querylist query=%s zone=%s",
+				query_str, tseg->cmd);
 			/* check if we encountered "$record$" token */
 		} else if (strcasecmp(tseg->cmd, "record") == 0) {
 			/*
@@ -189,6 +193,10 @@ build_querylist(const char *query_str, char **zone, char **record,
 			/* tseg->cmd points in-directly poinsts to a string */
 			tseg->direct = false;
 			foundrecord = true;
+
+			log(ISC_LOG_DEBUG(1),
+				"build_querylist query=%s record=%s",
+				query_str, tseg->cmd);
 			/* check if we encountered "$client$" token */
 		} else if (strcasecmp(tseg->cmd, "client") == 0) {
 			/*
@@ -202,6 +210,10 @@ build_querylist(const char *query_str, char **zone, char **record,
 			/* tseg->cmd points in-directly poinsts to a string */
 			tseg->direct = false;
 			foundclient = true;
+			
+			log(ISC_LOG_DEBUG(1),
+				"build_querylist query=%s client=%s",
+				query_str, tseg->cmd);
 		}
 	}
 
@@ -244,7 +256,7 @@ build_querylist(const char *query_str, char **zone, char **record,
 
 	/* pass back the query list */
 	*querylist = (query_list_t *) tql;
-
+	
 	/* return success */
 	return (ISC_R_SUCCESS);
 
@@ -267,7 +279,7 @@ build_querylist(const char *query_str, char **zone, char **record,
  * used to be in our queries from named.conf
  */
 char *
-build_querystring(query_list_t *querylist) {
+build_querystring(query_list_t *querylist, log_t log) {
 	query_segment_t *tseg = NULL;
 	unsigned int length = 0;
 	char *qs = NULL;
@@ -281,8 +293,12 @@ build_querystring(query_list_t *querylist) {
 		 */
 		if (tseg->direct == true)
 			length += tseg->strlen;
-		else	/* calculate string length for dynamic segments. */
+		else {	/* calculate string length for dynamic segments. */
+			if (log != NULL)
+				log(ISC_LOG_ERROR,"build_querystring tseg->direct=%d tseg->cmd=%s", 
+					tseg->direct, *(char **)tseg->cmd);
 			length += strlen(* (char**) tseg->cmd);
+		}
 		/* get the next segment */
 		tseg = DLZ_LIST_NEXT(tseg, link);
 	}
@@ -320,6 +336,10 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 	dbinstance_t *db = NULL;
 	int err;
 
+	if (log != NULL)
+			log(ISC_LOG_CRITICAL,
+			    "build_dbinstance began");
+	
 	/* allocate and zero memory for driver structure */
 	db = calloc(1, sizeof(dbinstance_t));
 	if (db == NULL) {
@@ -413,6 +433,10 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 		goto cleanup;
 	}
 
+	if (log != NULL)
+			log(ISC_LOG_CRITICAL,
+			    "build_dbinstance call build_querylist lookup_q lookup_str=%s zone=%s record=%s client=%s",
+				lookup_str, db->zone, db->record, db->client);
 	/* build lookup query, query list */
 	result = build_querylist(lookup_str, &db->zone, &db->record,
 				 &db->client, &db->lookup_q,
@@ -424,6 +448,10 @@ build_dbinstance(const char *allnodes_str, const char *allowxfr_str,
 			    "Could not build lookup query list");
 		goto cleanup;
 	}
+
+	if (log != NULL)
+			log(ISC_LOG_CRITICAL,
+			    "build_dbinstance finished");
 
 	/* pass back the db instance */
 	*dbi = (dbinstance_t *) db;
