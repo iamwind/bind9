@@ -401,6 +401,12 @@ mysql_get_resultset(const char *zone, const char *record,
 			*rs = mysql_store_result((MYSQL *) dbi->dbconn);
 			if (*rs == NULL)
 				result = ISC_R_FAILURE;
+			do
+  			{
+				MYSQL_RES* res = mysql_store_result((MYSQL *) dbi->dbconn);
+				mysql_free_result(res);
+			}
+			while ( (0 == mysql_next_result((MYSQL *) dbi->dbconn)) );
 		}
 	} else
 		result = ISC_R_FAILURE;
