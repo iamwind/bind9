@@ -867,30 +867,30 @@ dlz_lookup(const char *zone, const char *name,
 	MYSQL_RES *rs = NULL;
 	mysql_instance_t *db = (mysql_instance_t *)dbdata;
 	
-	db->log(ISC_LOG_ERROR, "dlz_lookup() methods:%d  clientinfo:%d", methods, clientinfo);
+	//db->log(ISC_LOG_ERROR, "dlz_lookup() methods:%d  clientinfo:%d", methods, clientinfo);
 
 	UNUSED(methods);
 	UNUSED(clientinfo);
 
 	if (methods == 0)
-		sprintf(clientstr, "127.0.0.1");
+		return (ISC_R_SUCCESS);
 	else {
         	result = methods->sourceip(clientinfo, &clientaddr);
 		if (result != ISC_R_SUCCESS)
 			return (result);
-		db->log(ISC_LOG_ERROR, "sourceip: %d", clientaddr->type.sin.sin_addr);
+		//db->log(ISC_LOG_ERROR, "sourceip: %d", clientaddr->type.sin.sin_addr);
 
 		/* convert client address to ascii text */
 		isc_netaddr_fromsockaddr(&netaddr, clientaddr);
-		db->log(ISC_LOG_ERROR, "sourceip: %d", netaddr.type.in);
+		//db->log(ISC_LOG_ERROR, "sourceip: %d", netaddr.type.in);
 		result = clientstr_from_netaddr(&netaddr, clientstr);
 		if (result != ISC_R_SUCCESS)
 			return (result);
 	
-		db->log(ISC_LOG_ERROR, "clientstr: %s", clientstr);
+		//db->log(ISC_LOG_ERROR, "clientstr: %s", clientstr);
 		/* make sure strings are always lowercase */
 		dns_sdlz_tolower(clientstr);
-		db->log(ISC_LOG_ERROR, "clientstr: %s", clientstr);
+		//db->log(ISC_LOG_ERROR, "clientstr: %s", clientstr);
 	}
 
 	result = mysql_get_resultset(zone, name, clientstr, LOOKUP, dbdata, &rs);
